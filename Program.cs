@@ -4,6 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using DotNetEnv;
 using AuthServiceNamespace.Services;
+using AuthServiceNamespace.Middleware;
 
 Env.Load();
 
@@ -15,6 +16,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // Registro del servicio IAuthService
+builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthServiceNamespace.Services.AuthService>();
 
 // Configuración de la base de datos
@@ -48,6 +50,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseAuthentication();
+app.UseMiddleware<JwtValidationMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();
