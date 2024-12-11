@@ -9,3 +9,4 @@ services:
       SA_PASSWORD: "YourPassword"
       ACCEPT_EULA: "Y"
       TRUST_SERVER_CERTIFICATE: "true"
+
