@@ -21,6 +21,7 @@ builder.Services.AddSwaggerGen();
 // Registro del servicio IAuthService
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthServiceNamespace.Services.AuthService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 // Configuración de la base de datos
 var connectionString = Environment.GetEnvironmentVariable("SQL_CONNECTION_STRING") + ";TrustServerCertificate=True;";
