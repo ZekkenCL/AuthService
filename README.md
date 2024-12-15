@@ -81,13 +81,20 @@ dotnet tool install --global dotnet-ef
 
 ## Levantar el Servicio
 
-1. Ejecuta el proyecto:
+1. Carga las dependencias:
+
+```bash
+dotnet restore
+```
+
+
+2. Ejecuta el proyecto:
 
 ```bash
 dotnet run
 ```
 
-2. Accede a la documentación de Swagger para probar los endpoints:
+3. Accede a la documentación de Swagger para probar los endpoints:
 
 ```
 http://localhost:5092/swagger/index.html
