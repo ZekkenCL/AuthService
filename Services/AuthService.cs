@@ -115,6 +115,24 @@ public async Task UpdatePassword(string userId, UpdatePasswordDto updatePassword
     user.PasswordHash = newPasswordHash;
 
     await _context.SaveChangesAsync();
+
+    var NewPassword = new
+    {
+        UserId = user.UserId,
+        NewPassword = user.PasswordHash
+    };
+
+    var messageJson = JsonSerializer.Serialize(NewPassword);
+
+    try
+    {
+        _rabbitMQPublisher.Publish(messageJson, "password_queue", "user.updatePassword");
+        Console.WriteLine($"Message published to RabbitMQ: {messageJson}");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error publishing message to RabbitMQ: {ex.Message}");
+    }
 }
 
 
