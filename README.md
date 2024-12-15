@@ -166,3 +166,6 @@ http://localhost:5092/swagger/index.html
 - Este microservicio debe integrarse con los demás servicios del sistema para un funcionamiento completo.
 - Utiliza Postman o Swagger para probar los endpoints y verificar las respuestas.
 
+---
+
+© 2024 - Arquitectura de Sistemas
