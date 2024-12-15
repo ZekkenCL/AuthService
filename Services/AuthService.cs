@@ -4,16 +4,19 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 
 namespace AuthServiceNamespace.Services
 {
     public class AuthService : IAuthService
     {
         private readonly AuthDbContext _context;
+        private readonly RabbitMQPublisher _rabbitMQPublisher;
 
-        public AuthService(AuthDbContext context)
+        public AuthService(AuthDbContext context, RabbitMQPublisher rabbitMQPublisher)
         {
             _context = context;
+            _rabbitMQPublisher = rabbitMQPublisher;
         }
 
      public async Task<LoginResponseDto> Login(LoginRequestDto loginRequestDto)
@@ -35,28 +38,60 @@ namespace AuthServiceNamespace.Services
 }
 
         public async Task<LoginResponseDto> Register(RegisterStudentDto registerStudentDto)
-        {
-            var passwordSalt = BCrypt.Net.BCrypt.GenerateSalt();
-            var passwordHash = BCrypt.Net.BCrypt.HashPassword(registerStudentDto.Password, passwordSalt);
+{
+    // Generar el hash de la contraseña
+    var passwordSalt = BCrypt.Net.BCrypt.GenerateSalt();
+    var passwordHash = BCrypt.Net.BCrypt.HashPassword(registerStudentDto.Password, passwordSalt);
 
-            var user = new User
-            {
-                FirstName = registerStudentDto.FirstName,
-                LastName = registerStudentDto.LastName,
-                SecondLastName = registerStudentDto.SecondLastName,
-                RUT = registerStudentDto.RUT,
-                Email = registerStudentDto.Email,
-                CareerId = registerStudentDto.CareerId,
-                PasswordHash = passwordHash,
-                PasswordSalt = passwordSalt
-            };
+    // Crear el usuario
+    var user = new User
+    {
+        FirstName = registerStudentDto.FirstName,
+        LastName = registerStudentDto.LastName,
+        SecondLastName = registerStudentDto.SecondLastName,
+        RUT = registerStudentDto.RUT,
+        Email = registerStudentDto.Email,
+        CareerId = registerStudentDto.CareerId,
+        PasswordHash = passwordHash,
+        PasswordSalt = passwordSalt
+    };
 
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+    // Guardar el usuario en la base de datos
+    _context.Users.Add(user);
+    await _context.SaveChangesAsync();
 
-            return new LoginResponseDto { Id = user.UserId };
+    // Preparar el mensaje para la cola
+    var userMessage = new
+    {
+        UserId = user.UserId,
+        FirstName = user.FirstName,
+        LastName = user.LastName,
+        SecondLastName = user.SecondLastName,
+        Email = user.Email,
+        CareerId = user.CareerId
+    };
 
-        }
+    // Convertir el mensaje a JSON
+    var messageJson = JsonSerializer.Serialize(userMessage);
+
+    // Publicar el mensaje en la cola RabbitMQ
+    try
+    {
+        _rabbitMQPublisher.Publish(messageJson, "user_queue", "user.register");
+        Console.WriteLine($"Message published to RabbitMQ: {messageJson}");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error publishing message to RabbitMQ: {ex.Message}");
+        // Manejar el error, si es necesario
+    }
+
+    // Retornar la respuesta con el ID del usuario
+    return new LoginResponseDto
+    {
+        Id = user.UserId
+    };
+}
 
 public async Task UpdatePassword(string userId, UpdatePasswordDto updatePasswordDto)
 {

@@ -3,41 +3,58 @@ using System.Text;
 using Microsoft.Extensions.Options;
 using AuthService.Config;
 
-public class RabbitMQPublisher
+namespace AuthServiceNamespace.Services
 {
-    private readonly RabbitMQSettings _settings;
-
-    public RabbitMQPublisher(IOptions<RabbitMQSettings> options)
+    public class RabbitMQPublisher
     {
-        _settings = options.Value;
-    }
+        private readonly RabbitMQSettings _settings;
 
-    public void Publish(string message)
-    {
-        var factory = new ConnectionFactory()
+        public RabbitMQPublisher(IOptions<RabbitMQSettings> options)
         {
-            HostName = _settings.Host,
-            Port = _settings.Port,
-            UserName = _settings.User,
-            Password = _settings.Password
-        };
+            _settings = options.Value;
+        }
 
-        using var connection = factory.CreateConnection();
-        using var channel = connection.CreateModel();
+        public void Publish(string message, string queueName, string routingKey)
+        {
+            // Configuración de la conexión a RabbitMQ
+            var factory = new ConnectionFactory()
+            {
+                HostName = _settings.Host,
+                Port = _settings.Port,
+                UserName = _settings.User,
+                Password = _settings.Password
+            };
 
-        channel.QueueDeclare(queue: _settings.Queue,
-                             durable: true,
-                             exclusive: false,
-                             autoDelete: false,
-                             arguments: null);
+            // Crear la conexión y el canal
+            using var connection = factory.CreateConnection();
+            using var channel = connection.CreateModel();
 
-        var body = Encoding.UTF8.GetBytes(message);
+            // Declarar la cola (asegura que exista)
+            channel.QueueDeclare(queue: queueName,
+                                 durable: true,
+                                 exclusive: false,
+                                 autoDelete: false,
+                                 arguments: null);
 
-        channel.BasicPublish(exchange: _settings.Exchange,
-                             routingKey: _settings.RoutingKey,
-                             basicProperties: null,
-                             body: body);
+            // Declarar el intercambio (si es necesario)
+            channel.ExchangeDeclare(exchange: _settings.Exchange, type: ExchangeType.Direct, durable: true);
 
-        Console.WriteLine($"Message Published: {message}");
+            // Vincular la cola con la clave de enrutamiento
+            channel.QueueBind(queue: queueName, exchange: _settings.Exchange, routingKey: routingKey);
+
+            // Serializar el mensaje en bytes
+            var body = Encoding.UTF8.GetBytes(message);
+
+            // Publicar el mensaje
+            var properties = channel.CreateBasicProperties();
+            properties.Persistent = true; // Mensajes persistentes en la cola
+
+            channel.BasicPublish(exchange: _settings.Exchange,
+                                 routingKey: routingKey,
+                                 basicProperties: properties,
+                                 body: body);
+
+            Console.WriteLine($"Message published to RabbitMQ: Queue='{queueName}', RoutingKey='{routingKey}', Message='{message}'");
+        }
     }
 }
